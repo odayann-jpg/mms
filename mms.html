@@ -2,64 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <title>MMS — Meta-Management System</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDALc9hialR10cqtv7vNOOisk6yLO4-sXc",
-    authDomain: "task-78c9f.firebaseapp.com",
-    projectId: "task-78c9f",
-    storageBucket: "task-78c9f.firebasestorage.app",
-    messagingSenderId: "148893903954",
-    appId: "1:148893903954:web:ca890789b86032ebc3038b"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db_fire = getFirestore(app);
-  const DOC_REF = doc(db_fire, 'mms', 'main');
-
-  // Firebaseへ保存
-  window.saveToFirebase = async function(data) {
-    try {
-      await setDoc(DOC_REF, { payload: JSON.stringify(data) });
-    } catch(e) {
-      console.warn('Firebase save error:', e);
-    }
-  };
-
-  // Firebase からロード
-  window.loadFromFirebase = async function() {
-    try {
-      const snap = await getDoc(DOC_REF);
-      if (snap.exists()) {
-        return JSON.parse(snap.data().payload);
-      }
-    } catch(e) {
-      console.warn('Firebase load error:', e);
-    }
-    return null;
-  };
-
-  // リアルタイム同期（他デバイスで変更があったら自動反映）
-  window.startFirebaseSync = function(callback) {
-    onSnapshot(DOC_REF, (snap) => {
-      if (snap.exists()) {
-        try {
-          const data = JSON.parse(snap.data().payload);
-          callback(data);
-        } catch(e) {}
-      }
-    });
-  };
-
-  window.firebaseReady = true;
-  document.dispatchEvent(new Event('firebase-ready'));
-</script>
 <style>
   :root {
     --bg: #f5f6f8;
@@ -88,7 +35,10 @@
     --c-hobby: #db2777;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; overflow: hidden; }
+  html { height: 100%; }
+  body { height: 100%; overflow: hidden; }
+  /* iOSプルリロード許可 */
+  #app-scroll-root { overflow-y: auto; -webkit-overflow-scrolling: touch; }
   body {
     font-family: var(--sans);
     background: var(--bg);
@@ -411,7 +361,7 @@
     border: none;
     outline: none;
     color: var(--text);
-    font-size: 13px;
+    font-size: 16px;
     font-family: var(--sans);
   }
   .quick-input::placeholder { color: var(--text-dim); }
@@ -482,7 +432,7 @@
     border-radius: 8px;
     padding: 10px 12px;
     color: var(--text);
-    font-size: 13px;
+    font-size: 16px;
     font-family: var(--sans);
     outline: none;
     transition: border-color 0.15s;
@@ -643,7 +593,7 @@
     border-radius: 8px;
     padding: 10px 12px;
     color: var(--text);
-    font-size: 13px;
+    font-size: 16px;
     font-family: var(--sans);
     outline: none;
     resize: none;
@@ -760,6 +710,17 @@
     font-family: var(--sans);
     font-weight: 600;
   }
+
+  .sp-item {
+    display:flex;align-items:center;
+    padding:11px 14px;border-radius:8px;
+    border:1px solid var(--border);background:#fff;
+    color:var(--text);font-size:14px;font-weight:500;
+    cursor:pointer;font-family:var(--sans);
+    text-align:left;width:100%;
+    transition:background 0.12s;
+  }
+  .sp-item:hover { background:var(--bg); }
 
   /* BOTTOM TAB BAR */
   .bottom-tabs {
@@ -883,6 +844,48 @@
   }
   .drawer-overlay.open { display: block; }
 
+  /* 次アクションポップアップ */
+  .next-action-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 500;
+    display: flex; align-items: flex-end;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .next-action-overlay.open { opacity: 1; pointer-events: all; }
+  .next-action-box {
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    padding: 24px 20px;
+    width: 100%;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .next-action-overlay.open .next-action-box { transform: translateY(0); }
+  .next-action-title { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+  .next-action-label { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--text); }
+  .next-action-input-row { display: flex; gap: 8px; }
+  .next-action-input {
+    flex: 1; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; font-size: 16px;
+    font-family: var(--sans); color: var(--text);
+    outline: none;
+  }
+  .next-action-input:focus { border-color: var(--accent); }
+  .next-action-submit {
+    background: var(--accent); border: none; border-radius: 8px;
+    color: #fff; padding: 0 18px; font-size: 16px;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .next-action-skip {
+    width: 100%; margin-top: 10px; padding: 10px;
+    background: none; border: none; color: var(--text-muted);
+    font-size: 14px; cursor: pointer; font-family: var(--sans);
+  }
+
   @media (max-width: 700px) {
     .sidebar { display: none; }
     .bottom-tabs { display: block; }
@@ -907,6 +910,7 @@
   <div class="logo">MMS <span>//</span> Meta-Management</div>
   <div class="topbar-spacer"></div>
   <span id="sync-status" style="font-size:11px;color:var(--accent);font-family:var(--mono);"></span>
+  <button class="topbar-btn" onclick="location.reload()" title="再読み込み">🔄</button>
   <button class="topbar-btn" onclick="openAIChat()">⚔ AI軍師に相談</button>
   <button class="topbar-btn" onclick="showView('settings')">設定</button>
 </div>
@@ -1000,7 +1004,8 @@
         </div>
         <div class="settings-section">
           <div class="settings-title">スペース名称</div>
-          <div class="settings-sub">5つの事業名を設定</div>
+          <div class="settings-sub">事業名を設定（保存するとFirebaseに同期されます）</div>
+          <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:12px;color:#856404;margin-bottom:12px">⚠ PCとスマホは<b>同じブラウザ</b>（両方Safari or 両方Chrome）で開いてください</div>
           <div id="space-name-fields"></div>
           <button class="settings-save-btn" onclick="saveSpaceNames()">保存</button>
         </div>
@@ -1103,6 +1108,37 @@
   </div>
 </div>
 
+<!-- 次アクション確認 -->
+<div class="next-action-overlay" id="next-action-overlay" onclick="if(event.target===this)closeNextAction()">
+  <div class="next-action-box">
+    <div class="next-action-title" id="next-action-prev-title"></div>
+    <div class="next-action-label">次のアクションはありますか？</div>
+    <div class="next-action-input-row">
+      <input class="next-action-input" id="next-action-input" placeholder="次にやること（なければスキップ）">
+      <button class="next-action-submit" id="next-action-submit">追加</button>
+    </div>
+    <button class="next-action-skip" onclick="closeNextAction()">スキップ（次のアクションなし）</button>
+  </div>
+</div>
+
+<!-- SPACE PICKER -->
+<div class="panel-overlay" id="space-picker-overlay" onclick="document.getElementById('space-picker-overlay').classList.remove('open')">
+  <div onclick="event.stopPropagation()" style="
+    background:#fff;border-radius:16px;padding:20px;
+    width:300px;max-width:92vw;
+    box-shadow:0 8px 32px rgba(0,0,0,0.15);
+    position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+    z-index:500;
+  ">
+    <div id="space-picker-title" style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;line-height:1.5"></div>
+    <div id="space-picker-list" style="display:flex;flex-direction:column;gap:4px"></div>
+    <button onclick="document.getElementById('space-picker-overlay').classList.remove('open')"
+      style="width:100%;margin-top:12px;padding:9px;border:1px solid var(--border);border-radius:8px;background:none;color:var(--text-muted);font-size:13px;cursor:pointer;font-family:var(--sans)">
+      キャンセル
+    </button>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
@@ -1116,23 +1152,48 @@
 // ============================================================
 // DATA LAYER — localStorage
 // ============================================================
-const DB_KEY = 'mms_data_v2';
+const DB_KEY = 'mms_data';
+// 全事業共通カテゴリ（グローバル定義）
+var COMMON_CATS = ['営業','マーケ/集客','サービス開発','業務フロー改善','契約','財務','お客様連絡','連絡待ち','確認系','事前準備','サービス提供','スタッフ関連','実務','戦略','その他'];
+window.COMMON_CATS = COMMON_CATS;
+
 const SPACES_DEF = [
-  { id:'a', name:'A事業', color:'#5b8fff', categories:['営業','財務','人事','戦略'] },
-  { id:'b', name:'B事業', color:'#ff6b9d', categories:['営業','マーケ','戦略'] },
-  { id:'c', name:'C事業', color:'#4ade80', categories:['営業','財務','教育'] },
-  { id:'d', name:'D事業', color:'#ffb347', categories:['営業','人事','戦略'] },
-  { id:'e', name:'E事業', color:'#a78bfa', categories:['営業','財務','教育'] },
+  { id:'a', name:'A事業', color:'#5b8fff', categories: COMMON_CATS },
+  { id:'b', name:'B事業', color:'#ff6b9d', categories: COMMON_CATS },
+  { id:'c', name:'C事業', color:'#4ade80', categories: COMMON_CATS },
+  { id:'d', name:'D事業', color:'#ffb347', categories: COMMON_CATS },
+  { id:'e', name:'E事業', color:'#a78bfa', categories: COMMON_CATS },
   { id:'priv', name:'プライベート', color:'#38bdf8', categories:['健康','家族','財務'] },
   { id:'hobby', name:'趣味', color:'#fb7185', categories:['学習','その他'] },
 ];
 
 function loadDB() {
+  // localStorageにキャッシュがあればそれを使う
+  // なければ空のDB（Firebaseから後で上書きされる）
   try {
     const raw = localStorage.getItem(DB_KEY);
     if (raw) return JSON.parse(raw);
   } catch(e) {}
-  return initDB();
+  // Firebaseから取得するまでの仮のDB（initDBは呼ばない）
+  return emptyDB();
+}
+
+function emptyDB() {
+  return {
+    settings: { apiKey: '', neglectDays: 2 },
+    spaces: [
+      { id:'a', name:'A事業', color:'#3b6ff0', categories: COMMON_CATS },
+      { id:'b', name:'B事業', color:'#e6427a', categories: COMMON_CATS },
+      { id:'c', name:'C事業', color:'#16a34a', categories: COMMON_CATS },
+      { id:'d', name:'D事業', color:'#d97706', categories: COMMON_CATS },
+      { id:'e', name:'E事業', color:'#7c3aed', categories: COMMON_CATS },
+      { id:'inbox', name:'受信箱', color:'#6b7280', categories: COMMON_CATS },
+      { id:'priv', name:'プライベート', color:'#0891b2', categories: COMMON_CATS },
+      { id:'hobby', name:'趣味', color:'#db2777', categories: COMMON_CATS },
+    ],
+    tasks: [],
+    logs: [],
+  };
 }
 function saveDB() {
   localStorage.setItem(DB_KEY, JSON.stringify(db));
@@ -1240,13 +1301,16 @@ function renderSidebar() {
   }).join('');
 
   // Settings fields
-  const sf = document.getElementById('space-name-fields');
+  var sf = document.getElementById('space-name-fields');
   if (sf) {
-    sf.innerHTML = db.spaces.slice(0,5).map((s,i) => `
-      <div class="settings-field">
-        <div class="settings-label">事業${String.fromCharCode(65+i)}</div>
-        <input class="settings-input" id="sname-${s.id}" value="${s.name}" placeholder="${s.name}">
-      </div>`).join('');
+    var html = '';
+    db.spaces.forEach(function(s, i) {
+      html += '<div class="settings-field">'
+        + '<div class="settings-label">' + s.name + '</div>'
+        + '<input class="settings-input" id="sname-' + s.id + '" value="' + s.name + '" placeholder="' + s.name + '">'
+        + '</div>';
+    });
+    sf.innerHTML = html;
   }
 }
 
@@ -1259,7 +1323,12 @@ function renderDashboard() {
   renderChecklist();
 
   const grid = document.getElementById('cards-grid');
-  grid.innerHTML = db.spaces.map(s => {
+  // 受信箱を先頭、残りは通常スペース
+  const orderedSpaces = [
+    ...db.spaces.filter(function(s){ return s.id === 'inbox'; }),
+    ...db.spaces.filter(function(s){ return s.id !== 'inbox'; })
+  ];
+  grid.innerHTML = orderedSpaces.map(s => {
     const tasks = db.tasks.filter(t => t.spaceId === s.id);
     const overdueT = tasks.filter(t => isOverdue(t));
     const neglectedT = tasks.filter(t => isNeglected(t) && !isOverdue(t));
@@ -1267,10 +1336,19 @@ function renderDashboard() {
     const alertT = [...overdueT, ...neglectedT];
 
     return `<div class="space-card">
-      <div class="card-header" onclick="showView('space','${s.id}');setActiveTab('tab-spaces')" style="cursor:pointer" title="${s.name}を開く">
-        <div class="card-color-bar" style="background:${s.color}"></div>
-        <div class="card-name">${s.name}</div>
-        <div class="card-count">${tasks.length}件 <span style="font-size:11px;color:var(--accent)">→</span></div>
+      <div class="card-header" style="cursor:pointer">
+        <div class="card-color-bar" style="background:${s.color}" onclick="showView('space','${s.id}');setActiveTab('tab-spaces')"></div>
+        <div class="card-name" onclick="showView('space','${s.id}');setActiveTab('tab-spaces')">${s.name}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--text-dim);font-family:var(--mono)">${tasks.length}件</span>
+          <button onclick="event.stopPropagation();openNewTask('${s.id}','')" style="
+            width:26px;height:26px;border-radius:6px;
+            background:var(--accent);border:none;color:#fff;
+            font-size:16px;cursor:pointer;line-height:1;
+            display:flex;align-items:center;justify-content:center;
+            flex-shrink:0;
+          ">＋</button>
+        </div>
       </div>
       ${alertT.length > 0 ? `
       <div class="card-section">
@@ -1293,7 +1371,7 @@ function renderDashboard() {
           </div>`).join('')}
       </div>` : ''}
       ${alertT.length === 0 && todayT.length === 0 ? `<div class="empty-state">タスクなし ✓</div>` : ''}
-      <button class="card-add-btn" onclick="openNewTask('${s.id}','')">＋ タスク追加</button>
+
     </div>`;
   }).join('');
 }
@@ -1302,35 +1380,98 @@ function renderDashboard() {
 // SPACE VIEW
 // ============================================================
 function renderSpaceView(spaceId) {
-  const space = getSpace(spaceId);
+  var space = getSpace(spaceId);
   if (!space) return;
   document.getElementById('sv-color').style.background = space.color;
   document.getElementById('sv-title').textContent = space.name;
 
-  const body = document.getElementById('sv-body');
-  body.innerHTML = space.categories.map(cat => {
-    const tasks = db.tasks.filter(t => t.spaceId === spaceId && t.category === cat && t.status !== '済');
-    return `<div class="category-block">
-      <div class="cat-header">
-        <div class="cat-name">${cat}</div>
-        <button class="cat-add" onclick="openNewTask('${spaceId}','${cat}')">＋</button>
-      </div>
-      ${tasks.length === 0 ? `<div class="empty-state" style="padding:12px;text-align:left">タスクなし</div>` : ''}
-      ${tasks.map(t => `
-        <div class="task-item" onclick="openTask('${t.id}')">
-          <div class="task-check" onclick="event.stopPropagation();completeTask('${t.id}')"></div>
-          <div style="flex:1;min-width:0">
-            <div class="task-item-name">${t.title}</div>
-            ${t.tags.length > 0 ? `<div class="task-tags" style="margin-top:4px">${t.tags.map(tag => `<span class="tag bad">${tag}</span>`).join('')}${t.metaTags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''}
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-            <span class="status-badge status-${t.status}">${t.status}</span>
-            ${t.deadline ? `<span class="task-deadline ${isOverdue(t)?'overdue':''}">${fmtDate(t.deadline)}</span>` : ''}
-          </div>
-        </div>`).join('')}
-    </div>`;
-  }).join('');
+  var spaceTasks = db.tasks.filter(function(t){ return t.spaceId === spaceId && t.status !== '済'; });
+  var extraCats = [];
+  spaceTasks.forEach(function(t){
+    if (space.categories.indexOf(t.category) < 0 && extraCats.indexOf(t.category) < 0) {
+      extraCats.push(t.category);
+    }
+  });
+  var allCats = space.categories.concat(extraCats);
+
+  var body = document.getElementById('sv-body');
+  body.innerHTML = '';
+
+  allCats.forEach(function(cat) {
+    var tasks = spaceTasks.filter(function(t){ return t.category === cat; });
+
+    var block = document.createElement('div');
+    block.className = 'category-block';
+
+    // ヘッダー
+    var header = document.createElement('div');
+    header.className = 'cat-header';
+    var catName = document.createElement('div');
+    catName.className = 'cat-name';
+    catName.textContent = cat;
+    var addBtn = document.createElement('button');
+    addBtn.className = 'cat-add';
+    addBtn.textContent = '＋';
+    (function(c){ addBtn.addEventListener('click', function(){ openNewTask(spaceId, c); }); })(cat);
+    header.appendChild(catName);
+    header.appendChild(addBtn);
+    block.appendChild(header);
+
+    if (tasks.length === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.style.padding = '12px';
+      empty.style.textAlign = 'left';
+      empty.textContent = 'タスクなし';
+      block.appendChild(empty);
+    } else {
+      tasks.forEach(function(t) {
+        var item = document.createElement('div');
+        item.className = 'task-item';
+        (function(tid){ item.addEventListener('click', function(){ openTask(tid); }); })(t.id);
+
+        var chk = document.createElement('div');
+        chk.className = 'task-check';
+        (function(tid){ chk.addEventListener('click', function(e){ e.stopPropagation(); completeTask(tid); }); })(t.id);
+
+        var info = document.createElement('div');
+        info.style.cssText = 'flex:1;min-width:0';
+        var nameEl = document.createElement('div');
+        nameEl.className = 'task-item-name';
+        nameEl.textContent = t.title;
+        info.appendChild(nameEl);
+        if (t.tags.length > 0 || t.metaTags.length > 0) {
+          var tagsEl = document.createElement('div');
+          tagsEl.className = 'task-tags';
+          tagsEl.style.marginTop = '4px';
+          t.tags.forEach(function(tag){ var s=document.createElement('span');s.className='tag bad';s.textContent=tag;tagsEl.appendChild(s); });
+          t.metaTags.forEach(function(tag){ var s=document.createElement('span');s.className='tag';s.textContent=tag;tagsEl.appendChild(s); });
+          info.appendChild(tagsEl);
+        }
+
+        var meta = document.createElement('div');
+        meta.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:4px';
+        var badge = document.createElement('span');
+        badge.className = 'status-badge status-' + t.status;
+        badge.textContent = t.status;
+        meta.appendChild(badge);
+        if (t.deadline) {
+          var dl = document.createElement('span');
+          dl.className = 'task-deadline' + (isOverdue(t) ? ' overdue' : '');
+          dl.textContent = fmtDate(t.deadline);
+          meta.appendChild(dl);
+        }
+
+        item.appendChild(chk);
+        item.appendChild(info);
+        item.appendChild(meta);
+        block.appendChild(item);
+      });
+    }
+    body.appendChild(block);
+  });
 }
+
 
 // ============================================================
 // LOG VIEW
@@ -1380,23 +1521,26 @@ function openTask(taskId) {
   document.getElementById('panel-body').innerHTML = `
     <!-- Space/Category -->
     <div class="panel-field">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
         <span class="tag" style="border-color:${space?.color};color:${space?.color}">${space?.name||''}</span>
-        <span class="tag">${task.category}</span>
         <span class="status-badge status-${task.status}">${task.status}</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="font-size:12px;color:var(--text-muted);flex-shrink:0">カテゴリ</label>
+        <select class="panel-input" id="pt-category" style="font-size:14px;padding:6px 10px"></select>
       </div>
     </div>
 
     <!-- Title -->
     <div class="panel-field">
       <div class="panel-field-label">タスク名</div>
-      <input class="panel-input" id="pt-title" value="${task.title}" oninput="updateTaskField('title',this.value)">
+      <input class="panel-input" id="pt-title" value="${task.title}">
     </div>
 
     <!-- Deadline -->
     <div class="panel-field">
       <div class="panel-field-label">期限</div>
-      <input class="panel-input" id="pt-deadline" type="date" value="${task.deadline||''}" oninput="updateTaskField('deadline',this.value)">
+      <input class="panel-input" id="pt-deadline" type="date" value="${task.deadline||''}">
     </div>
 
     <!-- Status -->
@@ -1428,7 +1572,7 @@ function openTask(taskId) {
     <!-- Detail -->
     <div class="panel-field">
       <div class="panel-field-label">詳細メモ</div>
-      <textarea class="panel-input" id="pt-detail" rows="5" oninput="updateTaskField('detail',this.value)">${task.detail||''}</textarea>
+      <textarea class="panel-input" id="pt-detail" rows="5">${task.detail||''}</textarea>
     </div>
 
     <!-- Subtasks -->
@@ -1469,10 +1613,14 @@ function renderSubtasks(task) {
 }
 
 function updateTaskField(field, value) {
-  const task = db.tasks.find(t => t.id === currentTaskId);
+  var task = db.tasks.find(function(t){ return t.id === currentTaskId; });
   if (!task) return;
   task[field] = value;
   saveDB();
+  // タイトル変更時はパネルヘッダーも即時更新
+  if (field === 'title') {
+    document.getElementById('panel-title').textContent = value;
+  }
 }
 
 function setStatus(status) {
@@ -1560,6 +1708,10 @@ function completeTask(taskId) {
   saveDB();
   closePanel();
   refresh();
+  // 次のアクション確認
+  var _spaceId = task.spaceId;
+  var _title = task.title;
+  setTimeout(function(){ askNextAction(_spaceId, _title); }, 400);
 }
 
 function deleteTask(taskId) {
@@ -1586,7 +1738,7 @@ function openNewTask(spaceId, category) {
   document.getElementById('panel-body').innerHTML = `
     <div class="panel-field">
       <div class="panel-field-label">タスク名 *</div>
-      <input class="panel-input" id="nt-title" placeholder="タスク名を入力" autofocus>
+      <input class="panel-input" id="nt-title" placeholder="タスク名を入力" autofocus onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();saveNewTask();}">
     </div>
     <div class="panel-field">
       <div class="panel-field-label">スペース</div>
@@ -1596,7 +1748,16 @@ function openNewTask(spaceId, category) {
     </div>
     <div class="panel-field">
       <div class="panel-field-label">カテゴリ</div>
-      <input class="panel-input" id="nt-cat" value="${category}" placeholder="カテゴリ名">
+      <select class="panel-input" id="nt-cat" onchange="if(this.value==='__custom__'){document.getElementById('nt-cat-custom').style.display='block';}else{document.getElementById('nt-cat-custom').style.display='none';}">
+        ${(function(){
+          var sp = db.spaces.find(function(s){return s.id===document.getElementById('nt-space')?.value||spaceId;});
+          var cats = sp ? sp.categories : [];
+          if(cats.indexOf(category)<0 && category) cats = [category].concat(cats);
+          if(cats.indexOf('未分類')<0) cats = cats.concat(['未分類']);
+          return cats.map(function(c){ return '<option value="'+c+'"'+(c===category?' selected':'')+'>'+c+'</option>'; }).join('')+'<option value="__custom__">＋ 新しいカテゴリ</option>';
+        })()}
+      </select>
+      <input class="panel-input" id="nt-cat-custom" placeholder="新しいカテゴリ名を入力" style="display:none;margin-top:6px">
     </div>
     <div class="panel-field">
       <div class="panel-field-label">期限</div>
@@ -1625,10 +1786,15 @@ function saveNewTask() {
   const title = document.getElementById('nt-title').value.trim();
   if (!title) { alert('タスク名を入力してください'); return; }
   const tags = ['苦手','進め方不明','一歩目不明'].filter(tag => document.getElementById('ntag-'+tag)?.classList.contains('on'));
+  var catEl = document.getElementById('nt-cat');
+  var catCustomEl = document.getElementById('nt-cat-custom');
+  var category = (catEl.value === '__custom__' && catCustomEl.value.trim())
+    ? catCustomEl.value.trim()
+    : (catEl.value !== '__custom__' ? catEl.value : '未分類');
   const task = {
     id: uid(),
     spaceId: document.getElementById('nt-space').value,
-    category: document.getElementById('nt-cat').value || '未分類',
+    category: category || '未分類',
     title,
     detail: document.getElementById('nt-detail').value,
     deadline: document.getElementById('nt-deadline').value,
@@ -1640,9 +1806,12 @@ function saveNewTask() {
   };
   db.tasks.push(task);
   saveDB();
+  var _newSpaceId = task.spaceId;
+  var _newTitle = task.title;
   closePanel();
   refresh();
   showToast('タスクを追加しました');
+  setTimeout(function(){ askNextAction(_newSpaceId, _newTitle); }, 400);
 }
 
 // ============================================================
@@ -1651,6 +1820,47 @@ function saveNewTask() {
 function openPanel() {
   document.getElementById('panel-overlay').classList.add('open');
   document.getElementById('slide-panel').classList.add('open');
+  setTimeout(function() {
+    // フォーカス
+    var f = document.getElementById('nt-title') || document.getElementById('pt-title');
+    if (f) f.focus();
+
+    // タスク詳細のイベントリスナーを登録
+    var ptTitle = document.getElementById('pt-title');
+    var ptDeadline = document.getElementById('pt-deadline');
+    var ptDetail = document.getElementById('pt-detail');
+    var ptCat = document.getElementById('pt-category');
+
+    if (ptTitle) {
+      ptTitle.addEventListener('input', function(){ updateTaskField('title', this.value); });
+      ptTitle.addEventListener('keydown', function(e){
+        if (e.key === 'Enter') { e.preventDefault(); ptTitle.blur(); showToast('タスク名を更新しました'); }
+      });
+    }
+    if (ptDeadline) {
+      ptDeadline.addEventListener('change', function(){ updateTaskField('deadline', this.value); });
+    }
+    if (ptDetail) {
+      ptDetail.addEventListener('input', function(){ updateTaskField('detail', this.value); });
+    }
+    // カテゴリセレクトをJS側で生成（COMMON_CATSをテンプレートリテラル外で参照）
+    if (ptCat && currentTaskId) {
+      var task = db.tasks.find(function(t){ return t.id === currentTaskId; });
+      if (task) {
+        var cats = (window.COMMON_CATS || []).slice();
+        if (cats.indexOf(task.category) < 0) cats.unshift(task.category);
+        ptCat.innerHTML = '';
+        cats.forEach(function(c) {
+          var opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          if (c === task.category) opt.selected = true;
+          ptCat.appendChild(opt);
+        });
+        ptCat.addEventListener('change', function(){ updateTaskField('category', this.value); });
+      }
+    }
+  }, 300);
 }
 function closePanel() {
   document.getElementById('panel-overlay').classList.remove('open');
@@ -1661,40 +1871,62 @@ function closePanel() {
 // ============================================================
 // QUICK INPUT
 // ============================================================
-document.getElementById('quick-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    const val = e.target.value.trim();
-    if (!val) return;
-    db.tasks.push({
-      id: uid(),
-      spaceId: 'a',
-      category: '受信箱',
-      title: val,
-      detail: '',
-      deadline: '',
-      status: '未',
-      tags: [],
-      metaTags: [],
-      subtasks: [],
-      createdAt: new Date().toISOString().slice(0,10),
-    });
-    saveDB();
-    e.target.value = '';
-    refresh();
-    showToast('受信箱に追加しました');
-    // Trigger AI
-    setTimeout(() => {
-      triggerAIPopup({
-        title: val,
-        tags: [],
-        metaTags: [],
-        spaceId: 'a',
-        isNew: true,
-      });
-    }, 800);
-  }
-});
+(function() {
+  var _composing = false;
+  var qi = document.getElementById('quick-input');
+  qi.addEventListener('compositionstart', function(){ _composing = true; });
+  qi.addEventListener('compositionend', function(){ _composing = false; });
+  qi.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey && !_composing) {
+      e.preventDefault();
+      var val = qi.value.trim();
+      if (!val) return;
+      qi.value = '';
+      qi.blur();
+      showSpacePicker(val);
+    }
+  });
+})();
+
+// スペース選択ポップアップ
+function showSpacePicker(title) {
+  var overlay = document.getElementById('space-picker-overlay');
+  var list = document.getElementById('space-picker-list');
+  list.innerHTML = '';
+  db.spaces.forEach(function(s) {
+    var btn = document.createElement('button');
+    btn.className = 'sp-item';
+    btn.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;background:' + s.color + ';display:inline-block;margin-right:10px;flex-shrink:0"></span>' + s.name;
+    (function(sid){ btn.addEventListener('click', function(){ quickAddTask(sid, title); }); })(s.id);
+    list.appendChild(btn);
+  });
+  overlay.classList.add('open');
+  document.getElementById('space-picker-title').textContent = '\u300c' + title + '\u300d\u3092\u3069\u3053\u306b\u8ffd\u52a0\uff1f';
+}
+
+function quickAddTask(spaceId, title) {
+  document.getElementById('space-picker-overlay').classList.remove('open');
+  db.tasks.push({
+    id: uid(),
+    spaceId: spaceId,
+    category: '未分類',
+    title: title,
+    detail: '',
+    deadline: '',
+    status: '未',
+    tags: [],
+    metaTags: [],
+    subtasks: [],
+    createdAt: new Date().toISOString().slice(0,10),
+  });
+  saveDB();
+  refresh();
+  var sp = db.spaces.find(function(s){ return s.id === spaceId; });
+  showToast((sp ? sp.name : '') + ' に追加しました');
+  setTimeout(function(){
+    triggerAIPopup({ title: title, tags: [], metaTags: [], spaceId: spaceId, isNew: true });
+  }, 800);
+}
 
 // ============================================================
 // AI POPUP (軍師)
@@ -1807,18 +2039,84 @@ function addChatMsg(role, text) {
   return div;
 }
 
+// APIなし時のオフライン分析
+function generateOfflineAnalysis(userMessage) {
+  var tasks = db.tasks;
+  var overdue = tasks.filter(function(t){ return isOverdue(t); });
+  var neglected = tasks.filter(function(t){ return isNeglected(t); });
+  var blocked = tasks.filter(function(t){
+    return t.tags.indexOf('苦手')>=0 || t.tags.indexOf('進め方不明')>=0 || t.tags.indexOf('一歩目不明')>=0;
+  });
+  var waiting = tasks.filter(function(t){ return t.status==='連絡待ち'||t.status==='確認待ち'; });
+  var isReview = userMessage.indexOf('経営全体レビュー') >= 0;
+  var NL = '\n';
+
+  if (isReview) {
+    var out = '現在の状況分析（AI軍師・オフラインモード）' + NL + NL;
+    if (overdue.length > 0) {
+      out += '期限切れ（今すぐ対応）' + NL;
+      overdue.forEach(function(t){
+        var sp = getSpace(t.spaceId);
+        out += '  ・' + t.title + '（' + (sp ? sp.name : '') + '）' + NL;
+      });
+    }
+    if (neglected.length > 0) {
+      out += NL + '放置中（今週中に動く）' + NL;
+      neglected.forEach(function(t){ out += '  ・' + t.title + NL; });
+    }
+    if (blocked.length > 0) {
+      out += NL + 'ブロック中（一歩目が不明）' + NL;
+      blocked.forEach(function(t){ out += '  ・' + t.title + NL; });
+    }
+    if (waiting.length > 0) {
+      out += NL + '待ち状態（フォローアップ検討）' + NL;
+      waiting.forEach(function(t){ out += '  ・' + t.title + NL; });
+    }
+    if (overdue.length === 0 && neglected.length === 0 && blocked.length === 0) {
+      out += '現在、緊急・放置タスクはありません。' + NL;
+    }
+    out += NL + '事業別タスク数' + NL;
+    db.spaces.forEach(function(s){
+      var cnt = tasks.filter(function(t){ return t.spaceId===s.id; }).length;
+      if (cnt > 0) out += '  ' + s.name + ': ' + cnt + '件' + NL;
+    });
+    out += NL + '今週の優先アクション（上位3つ）' + NL;
+    var priority = overdue.concat(neglected).concat(blocked).slice(0, 3);
+    if (priority.length > 0) {
+      priority.forEach(function(t, i){ out += (i+1) + '. ' + t.title + NL; });
+    } else {
+      out += '緊急タスクなし。新規タスクを入力しましょう。' + NL;
+    }
+    out += NL + 'Claude APIキーを設定すると、より詳細な分析が得られます。';
+    return out;
+  } else {
+    var responses = [
+      'このタスクの一歩目を具体的に決めましょう。' + NL + '今日5分だけ時間を取るとしたら、何をしますか？',
+      'このタスクが止まっている原因は何ですか？' + NL + '①情報不足 ②判断待ち ③苦手意識 ④時間不足' + NL + 'どれが一番近いですか？',
+      '誰かに依頼または相談できますか？' + NL + '一人で抱え込まず、動ける人を探してみましょう。',
+      'このタスクを完了したら、何が変わりますか？' + NL + 'ゴールを明確にすると動きやすくなります。',
+    ];
+    return responses[Math.floor(Math.random() * responses.length)]
+      + NL + NL + 'Claude APIキーを設定するとより深い対話ができます。';
+  }
+}
+
 async function sendChatMessage() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text) return;
   input.value = '';
+  input.focus();
 
   addChatMsg('user', text);
   chatHistory.push({ role: 'user', content: text });
 
   const apiKey = db.settings.apiKey;
   if (!apiKey) {
-    addChatMsg('ai', '（APIキーが設定されていません。設定画面でClaude APIキーを入力すると、本物のAI軍師が使えます）\n\nデモ回答: 一歩目を明確にするために、このタスクを3つの小さなアクションに分解してみましょう。最初の5分でできることは何ですか？');
+    // APIなしでもタスクデータを分析して有用な回答を返す
+    input.value = '';
+    var analysis = generateOfflineAnalysis(text);
+    addChatMsg('ai', analysis);
     return;
   }
 
@@ -1858,8 +2156,9 @@ ${task ? `\n現在のタスク: 「${task.title}」\n状態: ${task.tags.join(',
   }
 }
 
-document.getElementById('chat-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+document.getElementById('chat-input').addEventListener('keydown', function(e) {
+  // IME変換中（日本語入力中）のEnterは無視
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
     sendChatMessage();
   }
@@ -1889,12 +2188,20 @@ function setMood(logId, mood) {
 function showModal(title, body, buttons) {
   document.getElementById('modal-title').textContent = title;
   document.getElementById('modal-body').innerHTML = body;
-  document.getElementById('modal-actions').innerHTML = buttons.map((b,i) =>
-    `<button class="btn ${b.danger?'btn-danger':i===buttons.length-1&&!b.danger?'btn-primary':''}" onclick="(${b.action.toString()})()">${b.label}</button>`
-  ).join('');
+  window._modalBtns = {};
+  var html = '';
+  buttons.forEach(function(b, i) {
+    var key = 'mb' + i;
+    window._modalBtns[key] = b.action;
+    var cls = 'btn';
+    if (b.danger) cls += ' btn-danger';
+    else if (i === buttons.length - 1) cls += ' btn-primary';
+    html += '<button class="' + cls + '" onclick="window._modalBtns[\''+key+'\']()">'+b.label+'</button>';
+  });
+  document.getElementById('modal-actions').innerHTML = html;
   document.getElementById('modal').classList.add('open');
 }
-function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); window._modalBtns = {}; }
 
 // ============================================================
 // SETTINGS
@@ -1902,13 +2209,16 @@ function closeModal() { document.getElementById('modal').classList.remove('open'
 function renderSettings() {
   document.getElementById('api-key-input').value = db.settings.apiKey || '';
   document.getElementById('neglect-days-input').value = db.settings.neglectDays || 2;
-  const sf = document.getElementById('space-name-fields');
+  var sf = document.getElementById('space-name-fields');
   if (sf) {
-    sf.innerHTML = db.spaces.slice(0,5).map((s,i) => `
-      <div class="settings-field">
-        <div class="settings-label">事業${String.fromCharCode(65+i)}</div>
-        <input class="settings-input" id="sname-${s.id}" value="${s.name}" placeholder="${s.name}">
-      </div>`).join('');
+    var html = '';
+    db.spaces.forEach(function(s, i) {
+      html += '<div class="settings-field">'
+        + '<div class="settings-label">' + s.name + '</div>'
+        + '<input class="settings-input" id="sname-' + s.id + '" value="' + s.name + '" placeholder="' + s.name + '">'
+        + '</div>';
+    });
+    sf.innerHTML = html;
   }
 }
 function saveApiKey() {
@@ -1917,13 +2227,24 @@ function saveApiKey() {
   showToast('APIキーを保存しました');
 }
 function saveSpaceNames() {
-  db.spaces.slice(0,5).forEach(s => {
-    const inp = document.getElementById('sname-'+s.id);
-    if (inp) s.name = inp.value.trim() || s.name;
+  db.spaces.forEach(function(s) {
+    var inp = document.getElementById('sname-'+s.id);
+    if (inp && inp.value.trim()) s.name = inp.value.trim();
   });
-  saveDB();
+  // localStorageに保存
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+  // Firebaseに強制保存（非同期だが確実に送る）
+  if (window.saveToFirebase) {
+    window.saveToFirebase(db).then(function(){
+      showToast('✓ 保存・同期しました');
+    }).catch(function(){
+      showToast('保存しました（オフライン）');
+    });
+  } else {
+    showToast('スペース名を保存しました');
+  }
   renderSidebar();
-  showToast('スペース名を保存しました');
+  renderDashboard();
 }
 function saveNeglectDays() {
   db.settings.neglectDays = parseInt(document.getElementById('neglect-days-input').value) || 2;
@@ -2119,59 +2440,168 @@ function updateTabBadge() {
 // ============================================================
 // INIT
 // ============================================================
-// Firebase対応の初期化
+// 初期化 — Firebaseが「唯一の正」、絶対に空データで上書きしない
 async function initApp() {
-  // まずFirebaseから読み込みを試みる
-  if (window.firebaseReady && window.loadFromFirebase) {
-    showSyncStatus('🔄 同期中...');
-    const fireData = await window.loadFromFirebase();
-    if (fireData) {
-      db = fireData;
-      localStorage.setItem(DB_KEY, JSON.stringify(db));
-      showSyncStatus('✓ 同期済み');
-    } else {
-      // Firebaseに何もなければローカルデータをアップロード
-      await window.saveToFirebase(db);
-      showSyncStatus('✓ 初回アップロード完了');
-    }
-    // リアルタイム同期開始（他デバイスの変更を検知）
-    window.startFirebaseSync(function(data) {
-      // 自分の更新は無視、他デバイスからの更新のみ反映
-      const remoteStr = JSON.stringify(data);
-      const localStr = JSON.stringify(db);
-      if (remoteStr !== localStr) {
-        db = data;
-        localStorage.setItem(DB_KEY, JSON.stringify(db));
-        refresh();
-        showSyncStatus('🔄 他デバイスから同期');
-        setTimeout(function(){ showSyncStatus(''); }, 3000);
-      }
-    });
-    setTimeout(function(){ showSyncStatus(''); }, 2000);
-  }
+  // まずlocalStorageキャッシュで即起動
   renderSidebar();
   renderDashboard();
   updateTabBadge();
-}
 
-function showSyncStatus(msg) {
-  var el = document.getElementById('sync-status');
-  if (el) el.textContent = msg;
-}
+  if (window.firebaseReady && window.loadFromFirebase) {
+    showSyncStatus('🔄 同期中...');
+    try {
+      var fireData = await Promise.race([
+        window.loadFromFirebase(),
+        new Promise(function(_, reject){
+          setTimeout(function(){ reject(new Error('timeout')); }, 8000);
+        })
+      ]);
 
-// Firebase準備完了を待つ
-if (window.firebaseReady) {
-  initApp();
-} else {
-  document.addEventListener('firebase-ready', function(){ initApp(); });
-  // タイムアウト: 3秒待ってもFirebaseが来なければローカルで起動
-  setTimeout(function(){
-    if (!window.firebaseReady) {
-      renderSidebar();
-      renderDashboard();
-      updateTabBadge();
+      if (fireData) {
+        // Firebaseにデータあり→必ずFirebaseで上書き
+        db = fireData;
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
+        renderSidebar();
+        renderDashboard();
+        updateTabBadge();
+        showSyncStatus('✓ 同期済み');
+      } else {
+        // Firebaseが空の場合のみ、ローカルをアップロード
+        // ただしタスクが0件かつlogs0件の空データは絶対にアップロードしない
+        var hasData = db.tasks.length > 0 || db.logs.length > 0 ||
+          db.spaces.some(function(s){ return s.name !== s.id && s.name.length > 1; });
+        if (hasData) {
+          await window.saveToFirebase(db);
+          showSyncStatus('✓ 保存完了');
+        } else {
+          showSyncStatus('⚠ データなし');
+        }
+      }
+      setTimeout(function(){ showSyncStatus(''); }, 2000);
+
+      // リアルタイム同期（他デバイスの変更を検知）
+      window.startFirebaseSync(function(remoteData) {
+        // タスクが増えた場合のみ反映（減る方向の同期は慎重に）
+        var remoteStr = JSON.stringify(remoteData);
+        var localStr  = JSON.stringify(db);
+        if (remoteStr !== localStr) {
+          // リモートのタスク数がローカル以上なら反映
+          var remoteTaskCount = (remoteData.tasks || []).length;
+          var localTaskCount  = (db.tasks || []).length;
+          if (remoteTaskCount >= localTaskCount) {
+            db = remoteData;
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            refresh();
+            showSyncStatus('🔄 同期');
+            setTimeout(function(){ showSyncStatus(''); }, 2000);
+          }
+        }
+      });
+
+    } catch(e) {
+      showSyncStatus('⚠ オフライン');
+      setTimeout(function(){ showSyncStatus(''); }, 3000);
     }
-  }, 3000);
+  }
+}
+
+// 次のアクション確認ポップアップ
+function askNextAction(spaceId, prevTitle) {
+  var overlay = document.getElementById('next-action-overlay');
+  var titleEl = document.getElementById('next-action-prev-title');
+  var input = document.getElementById('next-action-input');
+  titleEl.textContent = '「' + prevTitle + '」完了！';
+  input.value = '';
+  overlay.classList.add('open');
+  setTimeout(function(){ input.focus(); }, 100);
+
+  // Enterで追加
+  input.onkeydown = function(e) {
+    if (e.key === 'Enter' && !e.isComposing) {
+      e.preventDefault();
+      submitNextAction(spaceId);
+    }
+    if (e.key === 'Escape') closeNextAction();
+  };
+  document.getElementById('next-action-submit').onclick = function(){ submitNextAction(spaceId); };
+}
+
+function submitNextAction(spaceId) {
+  var input = document.getElementById('next-action-input');
+  var val = input.value.trim();
+  if (val) {
+    db.tasks.push({
+      id: uid(), spaceId: spaceId, category: '未分類',
+      title: val, detail: '', deadline: '', status: '未',
+      tags: [], metaTags: [], subtasks: [],
+      createdAt: new Date().toISOString().slice(0,10),
+    });
+    saveDB();
+    refresh();
+    showToast('次のアクションを追加しました');
+  }
+  closeNextAction();
+}
+
+function closeNextAction() {
+  document.getElementById('next-action-overlay').classList.remove('open');
+}
+
+// ESCキーでパネル・チャットを閉じる
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('chat-panel').classList.contains('open')) {
+    closeAIChat(); return;
+  }
+  if (document.getElementById('slide-panel').classList.contains('open')) {
+    closePanel(); return;
+  }
+  if (document.getElementById('modal').classList.contains('open')) {
+    closeModal(); return;
+  }
+  if (document.getElementById('space-picker-overlay').classList.contains('open')) {
+    document.getElementById('space-picker-overlay').classList.remove('open'); return;
+  }
+});
+
+// スワイプで戻る（スペース→俯瞰）
+(function() {
+  var startX = 0;
+  var startY = 0;
+  document.addEventListener('touchstart', function(e) {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', function(e) {
+    // パネルが開いている時は無視
+    if (document.getElementById('slide-panel').classList.contains('open')) return;
+    if (document.getElementById('chat-panel').classList.contains('open')) return;
+    var dx = e.changedTouches[0].clientX - startX;
+    var dy = e.changedTouches[0].clientY - startY;
+    // 左スワイプ（横方向が支配的、50px以上）
+    if (dx < -60 && Math.abs(dy) < 60 && currentView === 'space') {
+      showView('dashboard');
+      setActiveTab('tab-dashboard');
+    }
+    // 右スワイプで俯瞰→スペース（最後に見ていたスペース）
+    if (dx > 60 && Math.abs(dy) < 60 && currentView === 'dashboard' && currentSpaceId) {
+      showView('space', currentSpaceId);
+      setActiveTab('tab-spaces');
+    }
+  }, { passive: true });
+})();
+
+var _initDone = false;
+function _doInit() {
+  if (_initDone) return;
+  _initDone = true;
+  initApp();
+}
+if (window.firebaseReady) {
+  _doInit();
+} else {
+  document.addEventListener('firebase-ready', _doInit);
+  setTimeout(_doInit, 2000);
 }
 
 // Check for neglected tasks on load
@@ -2181,6 +2611,48 @@ setTimeout(() => {
     triggerAIPopup(neglected[Math.floor(Math.random()*neglected.length)]);
   }
 }, 2000);
+</script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" onload="initFirebase()" onerror="document.dispatchEvent(new Event('firebase-ready'))"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script>
+function initFirebase() {
+  try {
+    var firebaseConfig = {
+      apiKey: "AIzaSyDALc9hialR10cqtv7vNOOisk6yLO4-sXc",
+      authDomain: "task-78c9f.firebaseapp.com",
+      projectId: "task-78c9f",
+      storageBucket: "task-78c9f.firebasestorage.app",
+      messagingSenderId: "148893903954",
+      appId: "1:148893903954:web:ca890789b86032ebc3038b"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    var db_fire = firebase.firestore();
+    var DOC_REF = db_fire.collection('mms').doc('main');
+    window.saveToFirebase = function(data) {
+      return DOC_REF.set({ payload: JSON.stringify(data) })
+        .catch(function(e){ console.warn('Firebase save error:', e); });
+    };
+    window.loadFromFirebase = function() {
+      return DOC_REF.get().then(function(snap) {
+        if (snap.exists) return JSON.parse(snap.data().payload);
+        return null;
+      }).catch(function(e){ console.warn('Firebase load error:', e); return null; });
+    };
+    window.startFirebaseSync = function(callback) {
+      DOC_REF.onSnapshot(function(snap) {
+        if (snap.exists) {
+          try { callback(JSON.parse(snap.data().payload)); } catch(e) {}
+        }
+      });
+    };
+    window.firebaseReady = true;
+    document.dispatchEvent(new Event('firebase-ready'));
+  } catch(e) {
+    console.warn('Firebase init error:', e);
+    document.dispatchEvent(new Event('firebase-ready'));
+  }
+}
 </script>
 </body>
 </html>
