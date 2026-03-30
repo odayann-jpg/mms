@@ -977,6 +977,23 @@
       <div class="space-view-body" id="sv-body"></div>
     </div>
 
+    <!-- ALL TASKS VIEW -->
+    <div class="view" id="view-all">
+      <div class="dash-header" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div class="dash-title">全タスク一覧</div>
+          <div class="dash-subtitle" id="all-tasks-count"></div>
+        </div>
+        <select id="all-sort" onchange="renderAllTasks()" style="font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);font-family:var(--sans)">
+          <option value="created">登録日順</option>
+          <option value="deadline">期限順</option>
+          <option value="space">事業別</option>
+          <option value="status">ステータス別</option>
+        </select>
+      </div>
+      <div class="space-view-body" id="all-tasks-body"></div>
+    </div>
+
     <!-- LOG VIEW -->
     <div class="view" id="view-log">
       <div class="dash-header">
@@ -1053,6 +1070,10 @@
       <span class="tab-icon">🏢</span>
       <span class="tab-label">スペース</span>
       <span class="tab-badge" id="tab-badge-spaces" style="display:none"></span>
+    </button>
+    <button class="tab-btn" id="tab-all" onclick="showView('all');setActiveTab('tab-all')">
+      <span class="tab-icon">📋</span>
+      <span class="tab-label">一覧</span>
     </button>
     <button class="tab-btn" id="tab-log" onclick="showView('log');setActiveTab('tab-log')">
       <span class="tab-icon">📓</span>
@@ -1272,9 +1293,12 @@ function showView(view, spaceId) {
     document.getElementById('view-dashboard').classList.add('active');
     document.getElementById('nav-dashboard').classList.add('active');
     renderDashboard();
+  } else if (view === 'all') {
+    document.getElementById('view-all').classList.add('active');
+    renderAllTasks();
   } else if (view === 'log') {
     document.getElementById('view-log').classList.add('active');
-    document.getElementById('nav-log').classList.add('active');
+    document.getElementById('nav-log')?.classList.add('active');
     renderLog();
   } else if (view === 'space') {
     document.getElementById('view-space').classList.add('active');
@@ -1472,6 +1496,134 @@ function renderSpaceView(spaceId) {
   });
 }
 
+
+// ============================================================
+// ALL TASKS VIEW
+// ============================================================
+function renderAllTasks() {
+  var sort = (document.getElementById('all-sort') || {}).value || 'deadline';
+  var tasks = db.tasks.filter(function(t){ return t.status !== '済'; });
+  var countEl = document.getElementById('all-tasks-count');
+  if (countEl) countEl.textContent = tasks.length + '件のタスク';
+
+  // ソート
+  if (sort === 'deadline') {
+    tasks.sort(function(a, b) {
+      if (!a.deadline && !b.deadline) return 0;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return a.deadline.localeCompare(b.deadline);
+    });
+  } else if (sort === 'space') {
+    tasks.sort(function(a, b) {
+      return a.spaceId.localeCompare(b.spaceId);
+    });
+  } else if (sort === 'status') {
+    var order = {'未':0,'進行':1,'確認待ち':2,'連絡待ち':3,'要確認':4};
+    tasks.sort(function(a, b){
+      return (order[a.status]||9) - (order[b.status]||9);
+    });
+  } else if (sort === 'created') {
+    tasks.sort(function(a, b){
+      return b.createdAt.localeCompare(a.createdAt);
+    });
+  }
+
+  var body = document.getElementById('all-tasks-body');
+  if (!body) return;
+  body.innerHTML = '';
+
+  if (tasks.length === 0) {
+    body.innerHTML = '<div class="empty-state">タスクなし ✓</div>';
+    return;
+  }
+
+  // グループヘッダー管理
+  var lastGroup = null;
+
+  tasks.forEach(function(t) {
+    var sp = getSpace(t.spaceId);
+
+    // グループヘッダー
+    var groupKey = '';
+    if (sort === 'space') groupKey = sp ? sp.name : '不明';
+    else if (sort === 'status') groupKey = t.status;
+    else if (sort === 'deadline') {
+      if (!t.deadline) groupKey = '期限なし';
+      else if (isOverdue(t)) groupKey = '期限切れ';
+      else groupKey = t.deadline.slice(0,7); // YYYY-MM
+    }
+    else if (sort === 'created') groupKey = t.createdAt.slice(0,7);
+
+    if (groupKey && groupKey !== lastGroup) {
+      var gh = document.createElement('div');
+      gh.style.cssText = 'font-size:11px;font-family:var(--mono);color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;padding:16px 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px;';
+      gh.textContent = groupKey;
+      body.appendChild(gh);
+      lastGroup = groupKey;
+    }
+
+    // タスク行
+    var item = document.createElement('div');
+    item.className = 'task-item';
+    item.style.marginBottom = '6px';
+    (function(tid){ item.addEventListener('click', function(){ openTask(tid); }); })(t.id);
+
+    // 左側：事業カラーバー
+    var colorBar = document.createElement('div');
+    colorBar.style.cssText = 'width:3px;height:100%;min-height:36px;border-radius:2px;flex-shrink:0;background:' + (sp ? sp.color : '#ccc') + ';align-self:stretch;';
+
+    var chk = document.createElement('div');
+    chk.className = 'task-check';
+    (function(tid){ chk.addEventListener('click', function(e){ e.stopPropagation(); completeTask(tid); }); })(t.id);
+
+    var info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0';
+
+    var nameEl = document.createElement('div');
+    nameEl.className = 'task-item-name';
+    nameEl.textContent = t.title;
+
+    var metaEl = document.createElement('div');
+    metaEl.style.cssText = 'display:flex;gap:6px;align-items:center;margin-top:3px;flex-wrap:wrap';
+
+    if (sp) {
+      var spTag = document.createElement('span');
+      spTag.style.cssText = 'font-size:10px;font-family:var(--mono);color:' + sp.color + ';border:1px solid ' + sp.color + ';padding:1px 5px;border-radius:4px;';
+      spTag.textContent = sp.name;
+      metaEl.appendChild(spTag);
+    }
+
+    var catTag = document.createElement('span');
+    catTag.style.cssText = 'font-size:10px;color:var(--text-muted);font-family:var(--mono)';
+    catTag.textContent = t.category;
+    metaEl.appendChild(catTag);
+
+    info.appendChild(nameEl);
+    info.appendChild(metaEl);
+
+    var right = document.createElement('div');
+    right.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0';
+
+    var badge = document.createElement('span');
+    badge.className = 'status-badge status-' + t.status;
+    badge.textContent = t.status;
+    right.appendChild(badge);
+
+    if (t.deadline) {
+      var dl = document.createElement('span');
+      dl.className = 'task-deadline' + (isOverdue(t) ? ' overdue' : '');
+      dl.textContent = fmtDate(t.deadline);
+      right.appendChild(dl);
+    }
+
+    item.appendChild(colorBar);
+    item.appendChild(chk);
+    item.appendChild(info);
+    item.appendChild(right);
+    body.appendChild(item);
+  });
+}
 
 // ============================================================
 // LOG VIEW
