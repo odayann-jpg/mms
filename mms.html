@@ -2823,60 +2823,57 @@ setTimeout(() => {
 }, 2000);
 </script>
 <!-- Firebase SDK -->
-<script src="https://unpkg.com/firebase@8.10.1/app/dist/index.cjs.js"></script>
-<script src="https://unpkg.com/firebase@8.10.1/firestore/dist/index.cjs.js"></script>
+
 <script>
 // firebase-app.jsとfirestore.jsが同期的に読み込まれた後に実行される
-function initFirebase() {
-  try {
-    var firebaseConfig = {
-      apiKey: "AIzaSyDALc9hialR10cqtv7vNOOisk6yLO4-sXc",
-      authDomain: "task-78c9f.firebaseapp.com",
-      projectId: "task-78c9f",
-      storageBucket: "task-78c9f.firebasestorage.app",
-      messagingSenderId: "148893903954",
-      appId: "1:148893903954:web:ca890789b86032ebc3038b"
-    };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    var db_fire = firebase.firestore();
-    var DOC_REF = db_fire.collection('mms').doc('main');
-    window.saveToFirebase = function(data) {
-      return DOC_REF.set({ payload: JSON.stringify(data) })
-        .catch(function(e){ console.warn('Firebase save error:', e); });
-    };
-    window.loadFromFirebase = function() {
-      return DOC_REF.get().then(function(snap) {
-        if (snap.exists) return JSON.parse(snap.data().payload);
-        return null;
-      }).catch(function(e){ console.warn('Firebase load error:', e); return null; });
-    };
-    window.startFirebaseSync = function(callback) {
-      DOC_REF.onSnapshot(function(snap) {
-        if (snap.exists) {
-          try { callback(JSON.parse(snap.data().payload)); } catch(e) {}
-        }
-      });
-    };
-    window.firebaseReady = true;
-    document.dispatchEvent(new Event('firebase-ready'));
-  } catch(e) {
-    console.warn('Firebase init error:', e);
-    document.dispatchEvent(new Event('firebase-ready'));
-  }
-}
-// DOMContentLoaded後に実行（SDKの読み込み完了を保証）
-if (typeof firebase !== 'undefined') {
-  initFirebase();
-} else {
-  window.addEventListener('load', function(){
-    if (typeof firebase !== 'undefined') {
-      initFirebase();
-    } else {
-      console.warn('Firebase SDK load failed');
-      document.dispatchEvent(new Event('firebase-ready'));
-    }
-  });
-}
+// Firebase REST API方式（SDKなし・どこでも動く）
+var FIREBASE_PROJECT = 'task-78c9f';
+var FIREBASE_API_KEY = 'AIzaSyDALc9hialR10cqtv7vNOOisk6yLO4-sXc';
+var FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT + '/databases/(default)/documents/mms/main';
+
+window.saveToFirebase = function(data) {
+  return fetch(FIRESTORE_URL + '?key=' + FIREBASE_API_KEY, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fields: {
+        payload: { stringValue: JSON.stringify(data) }
+      }
+    })
+  }).then(function(r) {
+    if (!r.ok) throw new Error('save failed: ' + r.status);
+  }).catch(function(e) { console.warn('Firebase save error:', e); });
+};
+
+window.loadFromFirebase = function() {
+  return fetch(FIRESTORE_URL + '?key=' + FIREBASE_API_KEY)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.fields && data.fields.payload) {
+        return JSON.parse(data.fields.payload.stringValue);
+      }
+      return null;
+    })
+    .catch(function(e) { console.warn('Firebase load error:', e); return null; });
+};
+
+// リアルタイム同期はポーリングで代替（30秒ごと）
+window.startFirebaseSync = function(callback) {
+  var lastStr = JSON.stringify(db);
+  setInterval(function() {
+    window.loadFromFirebase().then(function(data) {
+      if (!data) return;
+      var remoteStr = JSON.stringify(data);
+      if (remoteStr !== lastStr) {
+        lastStr = remoteStr;
+        callback(data);
+      }
+    });
+  }, 30000);
+};
+
+window.firebaseReady = true;
+document.dispatchEvent(new Event('firebase-ready'));
 </script>
 </body>
 </html>
