@@ -874,6 +874,13 @@ function openTask(taskId) {
   if (sp) tr.appendChild(mk('span', {cls:'tag', css:'border-color:'+sp.color+';color:'+sp.color, txt:sp.name}));
   tr.appendChild(mk('span', {cls:'sbadge s-'+task.status, txt:task.status}));
   f0.appendChild(tr);
+  // Space selector
+  var sr = mk('div', {css:'display:flex;gap:8px;align-items:center;margin-bottom:6px'});
+  sr.appendChild(mk('label', {css:'font-size:12px;color:var(--muted);flex-shrink:0', txt:'事業'}));
+  var spSel = mk('select', {cls:'pinput', css:'font-size:14px;padding:6px 10px'});
+  db.spaces.forEach(function(s){ var o=mk('option',{value:s.id,txt:s.name}); if(s.id===task.spaceId)o.selected=true; spSel.appendChild(o); });
+  spSel.addEventListener('change', function(){ updateF('spaceId', spSel.value); });
+  sr.appendChild(spSel); f0.appendChild(sr);
   // Category
   var cr = mk('div', {css:'display:flex;gap:8px;align-items:center'});
   cr.appendChild(mk('label', {css:'font-size:12px;color:var(--muted);flex-shrink:0', txt:'カテゴリ'}));
