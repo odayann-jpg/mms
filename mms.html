@@ -662,7 +662,7 @@ function renderDash() {
       alertT.slice(0,3).forEach(function(t) {
         var row = mk('div', {cls:'task-row'});
         row.appendChild(mk('span', {cls:'ndot'}));
-        row.appendChild(mk('span', {cls:'task-row-nm ov', txt:t.title}));
+        row.appendChild(mk('span', {cls:'task-row-nm ov', txt:t.title, attr:{data_tid:t.id}}));
         row.appendChild(mk('span', {cls:'task-row-days', txt:isOv(t)?'+'+daysOv(t.deadline)+'d':'放置'}));
         (function(tid){ row.addEventListener('click', function(){ openTask(tid); }); })(t.id);
         sec.appendChild(row);
@@ -676,7 +676,7 @@ function renderDash() {
       todT.slice(0,3).forEach(function(t) {
         var row = mk('div', {cls:'task-row'});
         row.appendChild(mk('span', {css:'width:6px'}));
-        row.appendChild(mk('span', {cls:'task-row-nm', txt:t.title}));
+        row.appendChild(mk('span', {cls:'task-row-nm', txt:t.title, attr:{data_tid:t.id}}));
         if (t.deadline) row.appendChild(mk('span', {css:'font-size:10px;color:var(--dim);font-family:var(--mono)', txt:fmtD(t.deadline)}));
         (function(tid){ row.addEventListener('click', function(){ openTask(tid); }); })(t.id);
         sec2.appendChild(row);
@@ -758,7 +758,7 @@ function mkTaskItem(t) {
   (function(tid){ chk.addEventListener('click', function(e){ e.stopPropagation(); completeTask(tid); }); })(t.id);
   item.appendChild(chk);
   var info = mk('div', {css:'flex:1;min-width:0'});
-  info.appendChild(mk('div', {cls:'task-nm', txt:t.title}));
+  info.appendChild(mk('div', {cls:'task-nm', txt:t.title, attr:{data_tid:t.id}}));
   if (t.tags.length>0||t.metaTags.length>0) {
     var tr = mk('div', {cls:'tags-row'});
     t.tags.forEach(function(tag){ tr.appendChild(mk('span', {cls:'tag bad', txt:tag})); });
@@ -798,7 +798,7 @@ function renderAll() {
     (function(tid){ chk.addEventListener('click', function(e){ e.stopPropagation(); completeTask(tid); }); })(t.id);
     item.appendChild(chk);
     var info = mk('div', {css:'flex:1;min-width:0'});
-    info.appendChild(mk('div', {cls:'task-nm', txt:t.title}));
+    info.appendChild(mk('div', {cls:'task-nm', txt:t.title, attr:{data_tid:t.id}}));
     var mr = mk('div', {css:'display:flex;gap:5px;margin-top:3px;flex-wrap:wrap;align-items:center'});
     if (sp) mr.appendChild(mk('span', {css:'font-size:10px;font-family:var(--mono);color:'+sp.color+';border:1px solid '+sp.color+';padding:1px 5px;border-radius:4px', txt:sp.name}));
     mr.appendChild(mk('span', {css:'font-size:10px;color:var(--muted);font-family:var(--mono)', txt:t.category}));
@@ -983,8 +983,19 @@ function renderST(container, task) {
 function updateF(field, value) {
   var task=db.tasks.find(function(t){return t.id===curTaskId;}); if(!task)return;
   task[field]=value;
-  if(field==='title') document.getElementById('ptitle').textContent=value;
   saveDB();
+  // タイトル変更：パネルヘッダーとダッシュボードのタスク行を即更新
+  if(field==='title') {
+    document.getElementById('ptitle').textContent=value;
+    // ダッシュボード・スペースビューのタスク名を即更新
+    document.querySelectorAll('[data-tid="'+curTaskId+'"]').forEach(function(el){
+      el.textContent=value;
+    });
+  }
+  // カテゴリ・スペース変更：バックグラウンドでビューを再描画
+  if(field==='category'||field==='spaceId') {
+    setTimeout(function(){ refresh(); }, 100);
+  }
 }
 
 function setStatus(status) {
