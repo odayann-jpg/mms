@@ -150,6 +150,7 @@ body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);
 .tbtn:hover{border-color:var(--accent);color:var(--accent)}
 .tbtn.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
 .tbtn.on.danger{background:var(--red-bg);border-color:var(--red);color:var(--red)}
+.tbtn.on.easy{background:rgba(22,163,74,.08);border-color:var(--green);color:var(--green)}
 .divider{height:1px;background:var(--border);margin:6px 0 14px}
 .st-row{display:flex;align-items:center;gap:8px;padding:5px 0}
 .st-chk{width:14px;height:14px;border:1.5px solid var(--border);border-radius:3px;cursor:pointer;flex-shrink:0;transition:all .12s}
@@ -910,11 +911,19 @@ function openTask(taskId) {
   }); f4.appendChild(mg); body.appendChild(f4);
   // Diag tags
   var f5=pf('診断・状態'); var dg=mk('div',{cls:'tag-grp'});
-  ['苦手','進め方不明','一歩目不明'].forEach(function(tag){
+  // 重さ系（赤）
+  ['苦手','進め方不明','一歩目不明','重い'].forEach(function(tag){
     var b=mk('button',{cls:'tbtn'+(task.tags.indexOf(tag)>=0?' on danger':''),txt:tag});
     (function(t){ b.addEventListener('click', function(){ toggleTag(t); }); })(tag);
     dg.appendChild(b);
-  }); f5.appendChild(dg); body.appendChild(f5);
+  });
+  // 軽さ系（緑）
+  ['すぐできる'].forEach(function(tag){
+    var b=mk('button',{cls:'tbtn'+(task.tags.indexOf(tag)>=0?' on easy':''),txt:tag});
+    (function(t){ b.addEventListener('click', function(){ toggleTag(t); }); })(tag);
+    dg.appendChild(b);
+  });
+  f5.appendChild(dg); body.appendChild(f5);
 
   body.appendChild(mk('div',{cls:'divider'}));
 
@@ -1155,13 +1164,14 @@ function showSyncStatus(msg) {
 // ============================================================
 var aipTimer=null;
 var AIP_S=[
+  function(t){return{msg:'「'+t.title+'」、重さを感じていますね。\nどこが重いですか？①量 ②複雑さ ③誰かへの遠慮 ④先が見えない',acts:['分解する','誰かに相談','一歩だけやる']};},
   function(t){return{msg:'「'+t.title+'」の一歩目は何ですか？\n具体的に動き出せる最小の行動は？',acts:['一歩目を分解','仕組み化する','あとで(隔離)']};},
   function(t){return{msg:'「'+t.title+'」が止まっています。\n苦手意識がありますか？誰かに依頼できますか？',acts:['依頼先を決める','苦手タグをつける','分解して考える']};},
   function(t){return{msg:t.title+'、仕組み化できないか考えてみましょう。\nこのタスク、毎回発生しますか？',acts:['仕組み化する','マニュアル化','スタッフに教育']};}
 ];
 
 function scheduleAIP(task){
-  if(task.tags.indexOf('苦手')>=0||task.tags.indexOf('進め方不明')>=0||task.tags.indexOf('一歩目不明')>=0||isNegl(task)){
+  if(task.tags.indexOf('苦手')>=0||task.tags.indexOf('進め方不明')>=0||task.tags.indexOf('一歩目不明')>=0||task.tags.indexOf('重い')>=0||isNegl(task)){
     clearTimeout(aipTimer); aipTimer=setTimeout(function(){trigAIP(task);},3000);
   }
 }
@@ -1205,7 +1215,8 @@ function addCMsg(role,text){
 function offlineAI(msg){
   var tasks=db.tasks, NL='\n';
   var ov=tasks.filter(function(t){return isOv(t);}),ne=tasks.filter(function(t){return isNegl(t);});
-  var bl=tasks.filter(function(t){return t.tags.indexOf('苦手')>=0||t.tags.indexOf('進め方不明')>=0||t.tags.indexOf('一歩目不明')>=0;});
+  var bl=tasks.filter(function(t){return t.tags.indexOf('苦手')>=0||t.tags.indexOf('進め方不明')>=0||t.tags.indexOf('一歩目不明')>=0||t.tags.indexOf('重い')>=0;});
+  var easy=tasks.filter(function(t){return t.tags.indexOf('すぐできる')>=0&&t.status!=='済';});
   var wt=tasks.filter(function(t){return t.status==='連絡待ち'||t.status==='確認待ち';});
   if(msg.indexOf('経営全体レビュー')>=0){
     var out='現在の状況分析（AI軍師・オフラインモード）'+NL+NL;
