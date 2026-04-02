@@ -85,7 +85,9 @@ body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);
 .cat-block{margin-bottom:24px}
 .cat-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .cat-nm{font-size:11px;font-family:var(--mono);color:var(--muted);letter-spacing:1px;text-transform:uppercase}
-.cat-add{background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;margin-left:auto;transition:color .12s}
+.cat-copy{background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;transition:all .12s;padding:2px 6px;border-radius:4px}
+.cat-copy:hover{background:var(--accent-bg);color:var(--accent)}
+.cat-add{background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;margin-left:4px;transition:color .12s}
 .cat-add:hover{color:var(--accent)}
 
 /* ─── TASK ITEM ─── */
@@ -732,7 +734,35 @@ function renderSpace(sid) {
     if (ct.length === 0) return;
     var block = mk('div', {cls:'cat-block'});
     var head = mk('div', {cls:'cat-head'});
-    head.appendChild(mk('div', {cls:'cat-nm', txt:cat}));
+    head.appendChild(mk('div', {cls:'cat-nm', txt:cat+' ('+ct.length+')'}));
+    // コピーボタン
+    var cpb = mk('button', {cls:'cat-copy', txt:'📋'});
+    cpb.title = 'クリップボードにコピー';
+    (function(c, tasks){
+      cpb.addEventListener('click', function(e){
+        e.stopPropagation();
+        var text = '【'+c+'】\n' + tasks.map(function(t){
+          var line = '・' + t.title;
+          if (t.deadline) line += ' (' + fmtD(t.deadline) + ')';
+          if (t.status !== '未') line += ' [' + t.status + ']';
+          if (t.detail) line += '\n  ' + t.detail;
+          return line;
+        }).join('\n');
+        navigator.clipboard.writeText(text).then(function(){
+          cpb.textContent = '✓';
+          setTimeout(function(){ cpb.textContent = '📋'; }, 1500);
+        }).catch(function(){
+          // fallback
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.style.position='fixed'; ta.style.top='-9999px';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+          document.body.removeChild(ta);
+          cpb.textContent = '✓';
+          setTimeout(function(){ cpb.textContent = '📋'; }, 1500);
+        });
+      });
+    })(cat, ct);
+    head.appendChild(cpb);
     var ab = mk('button', {cls:'cat-add', txt:'＋'});
     (function(c){ ab.addEventListener('click', function(){ openNew(sid,c); }); })(cat);
     head.appendChild(ab); block.appendChild(head);
@@ -928,7 +958,23 @@ function openTask(taskId) {
   body.appendChild(mk('div',{cls:'divider'}));
 
   // Detail
-  var f6=pf('詳細メモ'); var dta=document.createElement('textarea'); dta.className='pinput'; dta.rows=5; dta.value=task.detail||''; f6.appendChild(dta); body.appendChild(f6);
+  var f6=pf('詳細メモ・準備リスト');
+  // ツールバー
+  var dtbar = mk('div', {css:'display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap'});
+  var hints = ['□ 準備：','□ 確認：','□ 連絡：','□ 持参：'];
+  hints.forEach(function(h){
+    var hb = mk('button', {txt:h, css:'font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:#fff;color:var(--muted);cursor:pointer;font-family:var(--sans)'});
+    hb.addEventListener('click', function(){
+      dta.value += (dta.value&&!dta.value.endsWith('\n')?'\n':'') + h;
+      updateF('detail', dta.value);
+      dta.focus();
+    });
+    dtbar.appendChild(hb);
+  });
+  f6.appendChild(dtbar);
+  var dta=document.createElement('textarea'); dta.className='pinput'; dta.rows=8; dta.value=task.detail||'';
+  dta.placeholder='準備物、コンサル内容、メモなど\n\n□ 準備：\n□ 確認：\n□ 連絡：';
+  f6.appendChild(dta); body.appendChild(f6);
   // Subtasks
   var f7=pf('サブタスク'); var stl=mk('div',{id:'stlist'}); renderST(stl,task); f7.appendChild(stl);
   var asb=mk('button',{cls:'add-st',txt:'＋ サブタスク追加'}); asb.addEventListener('click',addST); f7.appendChild(asb); body.appendChild(f7);
