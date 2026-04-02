@@ -447,7 +447,13 @@ body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);
 // ============================================================
 // 0. GOOGLE CALENDAR SYNC
 // ============================================================
-var GCAL_SPACE_ID = 'a'; // 西岡慎也スペースのID
+// 西岡慎也スペースのIDを名前から動的に取得
+function getGcalSpaceId() {
+  var sp = db.spaces.find(function(s){
+    return s.name.indexOf('西岡') >= 0 || s.id === 'a';
+  });
+  return sp ? sp.id : 'a';
+}
 var GCAL_CATEGORY = 'コーディネート';
 var GCAL_CALENDAR_ID = 's.nishioka@fashion-stylist.co.jp';
 var GCAL_TAG = '__gcal__'; // カレンダー由来タスクのマーカー
@@ -503,7 +509,7 @@ function syncCalendar() {
 function applyCalendarEvents(events) {
   // 既存のカレンダー由来タスクを取得
   var existingGcalTasks = db.tasks.filter(function(t) {
-    return t.spaceId === GCAL_SPACE_ID && t.tags.indexOf(GCAL_TAG) >= 0;
+    return t.spaceId === getGcalSpaceId() && t.tags.indexOf(GCAL_TAG) >= 0;
   });
   var existingIds = existingGcalTasks.map(function(t) { return t.gcalId; });
 
@@ -512,7 +518,7 @@ function applyCalendarEvents(events) {
 
   // カレンダーから消えたタスクを削除
   db.tasks = db.tasks.filter(function(t) {
-    if (t.spaceId !== GCAL_SPACE_ID || t.tags.indexOf(GCAL_TAG) < 0) return true;
+    if (t.spaceId !== getGcalSpaceId() || t.tags.indexOf(GCAL_TAG) < 0) return true;
     return calendarIds.indexOf(t.gcalId) >= 0;
   });
 
@@ -523,7 +529,7 @@ function applyCalendarEvents(events) {
     var deadline = start ? start.slice(0, 10) : '';
     db.tasks.push({
       id: uid(), gcalId: ev.id,
-      spaceId: GCAL_SPACE_ID,
+      spaceId: getGcalSpaceId(),
       category: GCAL_CATEGORY,
       title: ev.summary || 'コーディネート',
       detail: start ? '📅 ' + new Date(start).toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '',
