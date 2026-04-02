@@ -287,6 +287,7 @@ body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);
   <div class="logo">MMS <span style="color:var(--dim)">//</span> META</div>
   <span id="sync-status"></span>
   <button class="top-btn" onclick="location.reload()">🔄</button>
+  <button class="top-btn" onclick="syncCalendar()" id="cal-sync-btn" title="西岡カレンダーを同期">📅</button>
   <button class="top-btn" onclick="openAIChat(null)">⚔ 軍師</button>
   <button class="top-btn" onclick="showView('settings')">設定</button>
 </div>
@@ -443,6 +444,123 @@ body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);
 </div>
 
 <script>
+// ============================================================
+// 0. GOOGLE CALENDAR SYNC
+// ============================================================
+var GCAL_SPACE_ID = 'a'; // 西岡慎也スペースのID
+var GCAL_CATEGORY = 'コーディネート';
+var GCAL_CALENDAR_ID = 's.nishioka@fashion-stylist.co.jp';
+var GCAL_TAG = '__gcal__'; // カレンダー由来タスクのマーカー
+
+// Googleカレンダーからコーディネート予定を取得してMMSに同期
+function syncCalendar() {
+  var btn = document.getElementById('cal-sync-btn');
+  btn.textContent = '⏳';
+  btn.disabled = true;
+
+  // Google Calendar REST API（OAuth不要・共有カレンダー）
+  var apiKey = 'AIzaSyDALc9hialR10cqtv7vNOOisk6yLO4-sXc';
+  var now = new Date();
+  var threeMonthsLater = new Date(now);
+  threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+
+  var params = [
+    'key=' + apiKey,
+    'q=' + encodeURIComponent('コーディネート'),
+    'timeMin=' + encodeURIComponent(now.toISOString()),
+    'timeMax=' + encodeURIComponent(threeMonthsLater.toISOString()),
+    'singleEvents=true',
+    'orderBy=startTime',
+    'maxResults=50'
+  ].join('&');
+
+  var url = 'https://www.googleapis.com/calendar/v3/calendars/'
+    + encodeURIComponent(GCAL_CALENDAR_ID)
+    + '/events?' + params;
+
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        // APIキーでは共有カレンダーに認証が必要なため、手動同期モード
+        showCalendarSyncModal();
+        btn.textContent = '📅'; btn.disabled = false;
+        return;
+      }
+      var events = data.items || [];
+      applyCalendarEvents(events);
+      btn.textContent = '📅'; btn.disabled = false;
+      toast('カレンダー同期完了：' + events.length + '件');
+    })
+    .catch(function(e) {
+      // 手動同期モードにフォールバック
+      showCalendarSyncModal();
+      btn.textContent = '📅'; btn.disabled = false;
+    });
+}
+
+// カレンダーイベントをMMSタスクに反映
+function applyCalendarEvents(events) {
+  // 既存のカレンダー由来タスクを取得
+  var existingGcalTasks = db.tasks.filter(function(t) {
+    return t.spaceId === GCAL_SPACE_ID && t.tags.indexOf(GCAL_TAG) >= 0;
+  });
+  var existingIds = existingGcalTasks.map(function(t) { return t.gcalId; });
+
+  // カレンダーに残っているイベントのID一覧
+  var calendarIds = events.map(function(e) { return e.id; });
+
+  // カレンダーから消えたタスクを削除
+  db.tasks = db.tasks.filter(function(t) {
+    if (t.spaceId !== GCAL_SPACE_ID || t.tags.indexOf(GCAL_TAG) < 0) return true;
+    return calendarIds.indexOf(t.gcalId) >= 0;
+  });
+
+  // 新しいイベントをタスクとして追加
+  events.forEach(function(ev) {
+    if (existingIds.indexOf(ev.id) >= 0) return; // 既にある
+    var start = ev.start && (ev.start.dateTime || ev.start.date);
+    var deadline = start ? start.slice(0, 10) : '';
+    db.tasks.push({
+      id: uid(), gcalId: ev.id,
+      spaceId: GCAL_SPACE_ID,
+      category: GCAL_CATEGORY,
+      title: ev.summary || 'コーディネート',
+      detail: start ? '📅 ' + new Date(start).toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '',
+      deadline: deadline,
+      status: '未',
+      tags: [GCAL_TAG],
+      metaTags: ['サービス提供'],
+      subtasks: [],
+      createdAt: todayStr(),
+    });
+  });
+
+  saveDB();
+  refresh();
+}
+
+// 手動同期モーダル（Claude経由で同期する場合）
+function showCalendarSyncModal() {
+  var body = mk('div', {});
+  body.innerHTML = '<div style="font-size:13px;line-height:1.7;color:var(--muted)">'
+    + 'Claudeに以下を送ると西岡さんのカレンダーからコーディネート予定を取得してMMSに同期します：<br><br>'
+    + '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:var(--mono);font-size:12px;user-select:all;cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent)">'
+    + '西岡さんのカレンダーからコーディネート予定を取得してMMSに同期して'
+    + '</div><br>'
+    + '<div style="font-size:11px;color:var(--dim)">↑ タップでコピー</div>'
+    + '</div>';
+  var modal = document.getElementById('modal-ov');
+  document.getElementById('modal-ttl').textContent = '📅 カレンダー同期';
+  document.getElementById('modal-body').innerHTML = '';
+  document.getElementById('modal-body').appendChild(body);
+  document.getElementById('modal-acts').innerHTML = '';
+  var closeBtn = mk('button', {cls:'mbtn', txt:'閉じる'});
+  closeBtn.addEventListener('click', function(){ modal.classList.remove('open'); });
+  document.getElementById('modal-acts').appendChild(closeBtn);
+  modal.classList.add('open');
+}
+
 // ============================================================
 // 1. FIREBASE REST API
 // ============================================================
