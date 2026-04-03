@@ -1552,6 +1552,52 @@ fbLoad().then(function(fireData){
   }
   syncStatus('✓ 同期済み');
   setTimeout(function(){syncStatus('');},2000);
+
+  // GCALパラメータ処理（Firebase読み込み完了後に実行）
+  (function(){
+    var params = new URLSearchParams(location.search);
+    var gcalData = params.get('gcal');
+    if (!gcalData) return;
+    try {
+      var newTasks = JSON.parse(decodeURIComponent(gcalData));
+      if (!Array.isArray(newTasks) || newTasks.length === 0) return;
+
+      // 西岡スペースIDを動的に解決
+      var targetSp = db.spaces.find(function(s){ return s.name.indexOf('西岡') >= 0; });
+      var targetSpaceId = targetSp ? targetSp.id : 'a';
+
+      // spaceIdを上書き
+      newTasks.forEach(function(t){ t.spaceId = targetSpaceId; });
+
+      // カレンダーに残っているIDだけ残す（削除されたものを除去）
+      var newGcalIds = newTasks.map(function(t){ return t.gcalId; });
+      db.tasks = db.tasks.filter(function(t){
+        if (t.tags && t.tags.indexOf('__gcal__') >= 0) {
+          return newGcalIds.indexOf(t.gcalId) >= 0;
+        }
+        return true;
+      });
+
+      // 新規のみ追加（重複防止）
+      var existingGcalIds = db.tasks
+        .filter(function(t){ return t.tags && t.tags.indexOf('__gcal__') >= 0; })
+        .map(function(t){ return t.gcalId; });
+      var added = 0;
+      newTasks.forEach(function(t){
+        if (existingGcalIds.indexOf(t.gcalId) < 0) {
+          db.tasks.push(t); added++;
+        }
+      });
+
+      saveDB(); refresh();
+      history.replaceState(null, '', location.pathname);
+      toast('📅 カレンダー同期完了：' + newTasks.length + '件（追加:' + added + '件）');
+    } catch(e) {
+      console.warn('gcal sync error:', e);
+      toast('⚠ 同期エラー: ' + e.message);
+    }
+  })();
+
   fbPoll(function(remote){
     if((remote.tasks||[]).length>=(db.tasks||[]).length){ db=remote; saveLocal(); refresh(); syncStatus('🔄 同期'); setTimeout(function(){syncStatus('');},2000); }
   });
