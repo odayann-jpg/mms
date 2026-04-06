@@ -110,6 +110,7 @@ body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);
 .tdl{font-size:10px;font-family:var(--mono);color:var(--muted)}
 .tdl.ov{color:var(--red)}
 .task-created{font-size:10px;font-family:var(--mono);color:var(--dim)}
+.kakunin-tag{font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(37,99,235,.1);color:var(--accent);border:1px solid rgba(37,99,235,.25);font-family:var(--mono)}
 
 /* ─── ALL TASKS ─── */
 .sort-sel{font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:var(--sans);cursor:pointer}
@@ -914,8 +915,9 @@ function mkTaskItem(t) {
   item.appendChild(chk);
   var info = mk('div', {css:'flex:1;min-width:0'});
   info.appendChild(mk('div', {cls:'task-nm', txt:t.title, attr:{data_tid:t.id}}));
-  if (t.tags.length>0||t.metaTags.length>0) {
+  if (t.tags.length>0||t.metaTags.length>0||t.kakuninType) {
     var tr = mk('div', {cls:'tags-row'});
+    if (t.kakuninType) tr.appendChild(mk('span', {cls:'kakunin-tag', txt:t.kakuninType}));
     t.tags.forEach(function(tag){ tr.appendChild(mk('span', {cls:'tag bad', txt:tag})); });
     t.metaTags.forEach(function(tag){ tr.appendChild(mk('span', {cls:'tag', txt:tag})); });
     info.appendChild(tr);
@@ -1066,6 +1068,22 @@ function openTask(taskId) {
     (function(t){ b.addEventListener('click', function(){ toggleMeta(t); }); })(tag);
     mg.appendChild(b);
   }); f4.appendChild(mg); body.appendChild(f4);
+  // 確認系サブタイプ（確認系カテゴリのみ表示）
+  if (task.category === '確認系') {
+    var fk=pf('確認の種類'); var kg=mk('div',{cls:'tag-grp'});
+    var kakuninTypes = ['確認のみ','一緒に考える','アイデアを聞く'];
+    kakuninTypes.forEach(function(kt){
+      var b=mk('button',{cls:'tbtn'+(task.kakuninType===kt?' on':''),txt:kt});
+      (function(t){ b.addEventListener('click', function(){
+        var tk=db.tasks.find(function(x){return x.id===curTaskId;});
+        if(tk){ tk.kakuninType=t; saveDB(); refresh(); }
+        kg.querySelectorAll('.tbtn').forEach(function(btn){ btn.className='tbtn'+(btn.textContent===t?' on':''); });
+      }); })(kt);
+      kg.appendChild(b);
+    });
+    fk.appendChild(kg); body.appendChild(fk);
+  }
+
   // Diag tags
   var f5=pf('診断・状態'); var dg=mk('div',{cls:'tag-grp'});
   // 重さ系（赤）
