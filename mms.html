@@ -469,17 +469,19 @@ function syncCalendar() {
   // Google Calendar REST API（OAuth不要・共有カレンダー）
   var apiKey = 'AIzaSyDALc9hialR10cqtv7vNOOisk6yLO4-sXc';
   var now = new Date();
+  var windowStart = new Date(now);
+  windowStart.setDate(windowStart.getDate() - 30);
   var threeMonthsLater = new Date(now);
   threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
 
   var params = [
     'key=' + apiKey,
     'q=' + encodeURIComponent('コーディネート'),
-    'timeMin=' + encodeURIComponent(now.toISOString()),
+    'timeMin=' + encodeURIComponent(windowStart.toISOString()),
     'timeMax=' + encodeURIComponent(threeMonthsLater.toISOString()),
     'singleEvents=true',
     'orderBy=startTime',
-    'maxResults=50'
+    'maxResults=100'
   ].join('&');
 
   var url = 'https://www.googleapis.com/calendar/v3/calendars/'
@@ -518,10 +520,13 @@ function applyCalendarEvents(events) {
   // カレンダーに残っているイベントのID一覧
   var calendarIds = events.map(function(e) { return e.id; });
 
-  // カレンダーから消えたタスクを削除
+  // カレンダーから消えたタスクを削除（未完了の過去タスクは保護）
   db.tasks = db.tasks.filter(function(t) {
     if (t.spaceId !== getGcalSpaceId() || t.tags.indexOf(GCAL_TAG) < 0) return true;
-    return calendarIds.indexOf(t.gcalId) >= 0;
+    if (calendarIds.indexOf(t.gcalId) >= 0) return true;
+    // カレンダーから消えているが、未完了タスクは削除しない（誤消去防止）
+    if (t.status !== '済') return true;
+    return false;
   });
 
   // 新しいイベントをタスクとして追加
@@ -609,7 +614,7 @@ function fbPoll(cb) {
 // 2. DATA
 // ============================================================
 var DB_KEY = 'mms_data';
-var CATS = ['営業','マーケ/集客','サービス開発','業務フロー改善','契約','財務','お客様連絡','連絡待ち','確認系','事前準備','サービス提供','スタッフ関連','実務','戦略','その他'];
+var CATS = ['営業','マーケ/集客','サービス開発','業務フロー改善','契約','財務','お客様連絡','連絡待ち','確認系','事前準備','コーディネート','サービス提供','スタッフ関連','実務','戦略','その他'];
 var SPACES_DEF = [
   {id:'a',name:'A事業',color:'#3b6ff0'},{id:'b',name:'B事業',color:'#e6427a'},
   {id:'c',name:'C事業',color:'#16a34a'},{id:'d',name:'D事業',color:'#d97706'},
