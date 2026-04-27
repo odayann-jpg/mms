@@ -631,8 +631,25 @@ function emptyDB() {
   };
 }
 
+// タスクの欠損フィールドを補完（古いデータや外部スクリプト由来のタスクが
+// tags/metaTags/subtasks を持たないとレンダリング時に例外が出るため）
+function normalizeTasks(d) {
+  if (!d || !Array.isArray(d.tasks)) return d;
+  d.tasks.forEach(function(t){
+    if (!Array.isArray(t.tags)) t.tags = [];
+    if (!Array.isArray(t.metaTags)) t.metaTags = [];
+    if (!Array.isArray(t.subtasks)) t.subtasks = [];
+    if (typeof t.status !== 'string') t.status = '未';
+    if (typeof t.title !== 'string') t.title = '(無題)';
+    if (typeof t.category !== 'string') t.category = '未分類';
+    if (typeof t.detail !== 'string') t.detail = '';
+    if (typeof t.deadline !== 'string') t.deadline = '';
+  });
+  return d;
+}
+
 function loadLocal() {
-  try { var r = localStorage.getItem(DB_KEY); if (r) return JSON.parse(r); } catch(e) {}
+  try { var r = localStorage.getItem(DB_KEY); if (r) return normalizeTasks(JSON.parse(r)); } catch(e) {}
   return emptyDB();
 }
 
@@ -920,11 +937,12 @@ function mkTaskItem(t) {
   item.appendChild(chk);
   var info = mk('div', {css:'flex:1;min-width:0'});
   info.appendChild(mk('div', {cls:'task-nm', txt:t.title, attr:{data_tid:t.id}}));
-  if (t.tags.length>0||t.metaTags.length>0||t.kakuninType) {
+  var _tags = t.tags || [], _meta = t.metaTags || [];
+  if (_tags.length>0||_meta.length>0||t.kakuninType) {
     var tr = mk('div', {cls:'tags-row'});
     if (t.kakuninType) tr.appendChild(mk('span', {cls:'kakunin-tag', txt:t.kakuninType}));
-    t.tags.forEach(function(tag){ tr.appendChild(mk('span', {cls:'tag bad', txt:tag})); });
-    t.metaTags.forEach(function(tag){ tr.appendChild(mk('span', {cls:'tag', txt:tag})); });
+    _tags.forEach(function(tag){ tr.appendChild(mk('span', {cls:'tag bad', txt:tag})); });
+    _meta.forEach(function(tag){ tr.appendChild(mk('span', {cls:'tag', txt:tag})); });
     info.appendChild(tr);
   }
   item.appendChild(info);
@@ -1575,6 +1593,7 @@ function forceResync(){
 syncStatus('🔄 同期中...');
 fbLoad().then(function(fireData){
   if(fireData){
+    fireData = normalizeTasks(fireData);
     var fbTasks = (fireData.tasks||[]).length;
     var localTasks = (db.tasks||[]).length;
     var hasData=(fbTasks>0)||(fireData.spaces&&fireData.spaces.some(function(s){return s.name!==s.id;}));
@@ -1639,6 +1658,7 @@ fbLoad().then(function(fireData){
   })();
 
   fbPoll(function(remote){
+    remote = normalizeTasks(remote);
     if((remote.tasks||[]).length>=(db.tasks||[]).length){ db=remote; saveLocal(); refresh(); syncStatus('🔄 同期'); setTimeout(function(){syncStatus('');},2000); }
   });
 }).catch(function(e){
