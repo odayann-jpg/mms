@@ -288,7 +288,7 @@ body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);
 <div id="topbar">
   <div class="logo">MMS <span style="color:var(--dim)">//</span> META</div>
   <span id="sync-status"></span>
-  <button class="top-btn" onclick="location.reload()">🔄</button>
+  <button class="top-btn" onclick="forceResync()" title="ローカルキャッシュを破棄してFirebaseから再読込">🔄</button>
   <button class="top-btn" onclick="syncCalendar()" id="cal-sync-btn" title="西岡カレンダーを同期">📅</button>
   <button class="top-btn" onclick="openAIChat(null)">⚔ 軍師</button>
   <button class="top-btn" onclick="showView('settings')">設定</button>
@@ -1564,14 +1564,31 @@ db=loadLocal();
 renderSidebar();
 renderDash();
 
+// 強制再同期: localStorageを破棄してFirebaseから再読み込み
+function forceResync(){
+  try { localStorage.removeItem(DB_KEY); } catch(e){}
+  // GitHub Pages のHTMLキャッシュも回避するためクエリ付きでリロード
+  var u = location.pathname + '?t=' + Date.now();
+  location.replace(u);
+}
+
 syncStatus('🔄 同期中...');
 fbLoad().then(function(fireData){
   if(fireData){
-    var hasData=(fireData.tasks&&fireData.tasks.length>0)||(fireData.spaces&&fireData.spaces.some(function(s){return s.name!==s.id;}));
-    if(hasData){ db=fireData; saveLocal(); refresh(); }
-    else if(db.tasks.length>0) fbSave(db).catch(function(){});
+    var fbTasks = (fireData.tasks||[]).length;
+    var localTasks = (db.tasks||[]).length;
+    var hasData=(fbTasks>0)||(fireData.spaces&&fireData.spaces.some(function(s){return s.name!==s.id;}));
+    // Firebaseに有意なデータがある、またはローカルより多い場合は必ず上書き
+    if(hasData || fbTasks > localTasks){
+      db=fireData; saveLocal(); refresh();
+      console.info('[MMS] Firebase load OK: tasks='+fbTasks+' (local was '+localTasks+')');
+    } else if(localTasks>0) {
+      fbSave(db).catch(function(){});
+      console.info('[MMS] Firebase empty, pushing local: tasks='+localTasks);
+    }
   } else {
     fbSave(db).catch(function(){});
+    console.warn('[MMS] Firebase load returned null, pushing local');
   }
   syncStatus('✓ 同期済み');
   setTimeout(function(){syncStatus('');},2000);
@@ -1625,7 +1642,7 @@ fbLoad().then(function(fireData){
     if((remote.tasks||[]).length>=(db.tasks||[]).length){ db=remote; saveLocal(); refresh(); syncStatus('🔄 同期'); setTimeout(function(){syncStatus('');},2000); }
   });
 }).catch(function(e){
-  console.warn('FB load:',e);
+  console.warn('[MMS] Firebase load failed:',e);
   syncStatus('⚠ オフライン');
   setTimeout(function(){syncStatus('');},3000);
 });
