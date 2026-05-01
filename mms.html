@@ -517,36 +517,29 @@ function applyCalendarEvents(events) {
   });
   var existingIds = existingGcalTasks.map(function(t) { return t.gcalId; });
 
-  // カレンダーに残っているイベントのID一覧
-  var calendarIds = events.map(function(e) { return e.id; });
+  // ★削除ロジックは無効化（誤消去事故が頻発したため）。
+  // カレンダーから外れたタスクは画面上に残し、ユーザーが個別に判断して消す方針。
 
-  // カレンダーから消えたタスクを削除（未完了の過去タスクは保護）
-  db.tasks = db.tasks.filter(function(t) {
-    if (t.spaceId !== getGcalSpaceId() || t.tags.indexOf(GCAL_TAG) < 0) return true;
-    if (calendarIds.indexOf(t.gcalId) >= 0) return true;
-    // カレンダーから消えているが、未完了タスクは削除しない（誤消去防止）
-    if (t.status !== '済') return true;
-    return false;
-  });
-
-  // 新しいイベントをタスクとして追加
+  // 新しいイベントをタスクとして追加（validateAndFillTask 経由で必須フィールド保証）
   events.forEach(function(ev) {
     if (existingIds.indexOf(ev.id) >= 0) return; // 既にある
     var start = ev.start && (ev.start.dateTime || ev.start.date);
     var deadline = start ? start.slice(0, 10) : '';
-    db.tasks.push({
-      id: uid(), gcalId: ev.id,
+    var title = ev.summary || 'コーディネート';
+    // タイトルから自動カテゴリ判定（コーディネート/同行）
+    var cat = GCAL_CATEGORY;
+    if (title.indexOf('同行') >= 0) cat = '同行';
+    var task = validateAndFillTask({
+      gcalId: ev.id,
       spaceId: getGcalSpaceId(),
-      category: GCAL_CATEGORY,
-      title: ev.summary || 'コーディネート',
+      category: cat,
+      title: title,
       detail: start ? '📅 ' + new Date(start).toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '',
       deadline: deadline,
-      status: '未',
       tags: [GCAL_TAG],
-      metaTags: ['サービス提供'],
-      subtasks: [],
-      createdAt: todayStr(),
+      metaTags: [],
     });
+    if (task) db.tasks.push(task);
   });
 
   saveDB();
@@ -582,6 +575,8 @@ var FBK = 'AIzaSyDALc9hialR10cqtv7vNOOisk6yLO4-sXc';
 var FBU = 'https://firestore.googleapis.com/v1/projects/' + FBP + '/databases/(default)/documents/mms/main';
 
 function fbSave(data) {
+  // Firebaseに送る前に正規化（欠損フィールド補完）。壊れたデータが入るのを防ぐ。
+  if (typeof normalizeTasks === 'function') normalizeTasks(data);
   return fetch(FBU + '?key=' + FBK, {
     method: 'PATCH',
     headers: {'Content-Type': 'application/json'},
@@ -644,8 +639,37 @@ function normalizeTasks(d) {
     if (typeof t.category !== 'string') t.category = '未分類';
     if (typeof t.detail !== 'string') t.detail = '';
     if (typeof t.deadline !== 'string') t.deadline = '';
+    if (typeof t.id !== 'string' || !t.id) t.id = uid();
   });
   return d;
+}
+
+// タスク追加用ファクトリ：必須フィールドを必ず揃え、不正なら null を返す。
+// 全ての書き込み経路はこれを通す。
+function validateAndFillTask(t) {
+  if (!t || typeof t !== 'object') {
+    console.warn('[MMS] validateAndFillTask: not an object', t);
+    return null;
+  }
+  if (!t.title || typeof t.title !== 'string') {
+    console.warn('[MMS] validateAndFillTask: missing title', t);
+    return null;
+  }
+  return {
+    id: (typeof t.id === 'string' && t.id) ? t.id : uid(),
+    gcalId: t.gcalId || undefined,
+    spaceId: t.spaceId || 'a',
+    category: (typeof t.category === 'string' && t.category) ? t.category : '未分類',
+    title: t.title,
+    detail: typeof t.detail === 'string' ? t.detail : '',
+    deadline: typeof t.deadline === 'string' ? t.deadline : '',
+    status: (typeof t.status === 'string' && t.status) ? t.status : '未',
+    tags: Array.isArray(t.tags) ? t.tags : [],
+    metaTags: Array.isArray(t.metaTags) ? t.metaTags : [],
+    subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+    kakuninType: t.kakuninType || undefined,
+    createdAt: t.createdAt || todayStr(),
+  };
 }
 
 function loadLocal() {
@@ -1625,27 +1649,23 @@ fbLoad().then(function(fireData){
       var targetSp = db.spaces.find(function(s){ return s.name.indexOf('西岡') >= 0; });
       var targetSpaceId = targetSp ? targetSp.id : 'a';
 
-      // spaceIdを上書き
-      newTasks.forEach(function(t){ t.spaceId = targetSpaceId; });
+      // spaceId補完（明示されていなければ西岡）
+      newTasks.forEach(function(t){ if(!t.spaceId) t.spaceId = targetSpaceId; });
 
-      // カレンダーに残っているIDだけ残す（削除されたものを除去）
-      var newGcalIds = newTasks.map(function(t){ return t.gcalId; });
-      db.tasks = db.tasks.filter(function(t){
-        if (t.tags && t.tags.indexOf('__gcal__') >= 0) {
-          return newGcalIds.indexOf(t.gcalId) >= 0;
-        }
-        return true;
-      });
-
-      // 新規のみ追加（重複防止）
+      // ★削除ロジックは無効化。同期は「追加のみ」とし、消えたものはユーザー判断で消す。
+      // 既存タスクは gcalId （優先）または title で重複判定。
       var existingGcalIds = db.tasks
-        .filter(function(t){ return t.tags && t.tags.indexOf('__gcal__') >= 0; })
+        .filter(function(t){ return t.gcalId; })
         .map(function(t){ return t.gcalId; });
+      var existingTitles = db.tasks.map(function(t){ return t.title; });
       var added = 0;
       newTasks.forEach(function(t){
-        if (existingGcalIds.indexOf(t.gcalId) < 0) {
-          db.tasks.push(t); added++;
-        }
+        // バリデーション + 欠損補完
+        var task = validateAndFillTask(t);
+        if (!task) return;
+        if (task.gcalId && existingGcalIds.indexOf(task.gcalId) >= 0) return;
+        if (existingTitles.indexOf(task.title) >= 0) return;
+        db.tasks.push(task); added++;
       });
 
       saveDB(); refresh();
