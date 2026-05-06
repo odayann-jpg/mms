@@ -82,8 +82,8 @@ body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);
 /* ─── SPACE VIEW ─── */
 .sp-hdr{display:flex;align-items:center;gap:10px}
 .sp-bar{width:4px;height:26px;border-radius:2px}
-.cat-block{margin-bottom:14px}
-.cat-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.cat-block{margin-bottom:10px}
+.cat-head{display:flex;align-items:center;gap:8px;margin-bottom:3px}
 .cat-nm{font-size:11px;font-family:var(--mono);color:var(--muted);letter-spacing:1px;text-transform:uppercase}
 .cat-copy{background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;transition:all .12s;padding:2px 6px;border-radius:4px}
 .cat-copy:hover{background:var(--accent-bg);color:var(--accent)}
@@ -91,7 +91,7 @@ body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);
 .cat-add:hover{color:var(--accent)}
 
 /* ─── TASK ITEM ─── */
-.task-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:all .15s;box-shadow:var(--sh);margin-bottom:4px}
+.task-item{display:flex;align-items:center;gap:10px;padding:2px 10px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:all .15s;box-shadow:var(--sh);margin-bottom:2px}
 .task-item:hover{border-color:var(--accent);background:var(--accent-bg)}
 .task-chk{width:16px;height:16px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;cursor:pointer;transition:all .12s}
 .task-chk:hover{border-color:var(--green)}
@@ -996,7 +996,7 @@ function renderAll() {
     var sp = getSp(t.spaceId);
     var gk = sort==='space'?(sp?sp.name:'不明'):sort==='status'?t.status:sort==='deadline'?(!t.deadline?'期限なし':isOv(t)?'期限切れ':t.deadline.slice(0,7)):t.createdAt.slice(0,7);
     if (gk && gk!==lastG) { body.appendChild(mk('div', {cls:'g-hdr', txt:gk})); lastG=gk; }
-    var item = mk('div', {cls:'task-item', css:'margin-bottom:4px'});
+    var item = mk('div', {cls:'task-item', css:'margin-bottom:2px'});
     (function(tid){ item.addEventListener('click', function(){ openTask(tid); }); })(t.id);
     if (sp) item.appendChild(mk('div', {css:'width:3px;min-height:36px;border-radius:2px;background:'+sp.color+';align-self:stretch;flex-shrink:0'}));
     var chk = mk('div', {cls:'task-chk'});
